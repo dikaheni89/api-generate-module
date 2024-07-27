@@ -1,0 +1,10 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+# Ignore everything in src
+/src/*
+!/src/generators/
+
+# Keep Folder Prisma
+prisma
