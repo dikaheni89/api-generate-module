@@ -1,7 +1,5 @@
-# generator-api
+# api-generator-module
 
-[![Codeship Status for ndelvalle/api-generator-module](https://github.com/dikaheni89/api-generate-module.git)](https://junioradam.com)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/c4ef0a3c22c940469bb69af91a44f386)](https://www.codacy.com/app/ndelvalle/generator-api?utm_source=github.com&utm_medium=referral&utm_content=ndelvalle/generator-api&utm_campaign=badger)
 
 generator for creating RESTful NodeJS APIs, using ES6, Prisma. The fastest way to get your project up and running using an awesome stack.
 
