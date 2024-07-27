@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -18,8 +41,22 @@ const fs_extra_1 = __importDefault(require("fs-extra"));
 const child_process_1 = require("child_process");
 const util_1 = require("util");
 const client_1 = require("@prisma/client");
+const dotenv_1 = __importDefault(require("dotenv"));
+const process = __importStar(require("node:process"));
+dotenv_1.default.config();
 const execPromise = (0, util_1.promisify)(child_process_1.exec);
-const prisma = new client_1.PrismaClient();
+const prismaSchemaPath = process.env.PRISMA_SCHEMA_PATH || './prisma/schema.prisma';
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+    throw new Error('DATABASE_URL is not defined in the environment variables.');
+}
+const prisma = new client_1.PrismaClient({
+    datasources: {
+        db: {
+            url: databaseUrl,
+        },
+    },
+});
 // Mengambil nama model dari PostgreSQL
 const getModelNames = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -231,9 +268,103 @@ const generateHttpFile = (modelName, fields) => __awaiter(void 0, void 0, void 0
     # Delete ${modelName} By Id
     DELETE {{ baseURL }}/${modelName.toLowerCase()}/1
 `;
-    const httpFilePath = path_1.default.join(__dirname, '..', 'http', `${modelName.toLowerCase()}.http`);
+    const httpFilePath = path_1.default.join(process.cwd(), 'src/http', `${modelName.toLowerCase()}.http`);
     yield writeFileAndLog(httpFilePath, httpContent);
 });
+const appTemplate = () => `
+import express, { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+import { json } from 'body-parser';
+import { ValidationMiddleware } from '@middlewares/validation.middleware';
+import { Routes } from '@interfaces/routes.interface';
+import { CREDENTIALS, NODE_ENV, PORT } from '@config';
+import { HttpException } from '@exceptions/HttpException';
+import { logger, stream } from '@utils/logger';
+import morgan from 'morgan';
+import cors from 'cors';
+import hpp from 'hpp';
+import helmet from 'helmet';
+import compression from 'compression';
+import cookieParser from 'cookie-parser';
+
+const prisma = new PrismaClient();
+
+class App {
+  public app: express.Application;
+  public env: string;
+  public port: number;
+
+  constructor(routes: Routes[]) {
+    this.app = express();
+    this.env = NODE_ENV || 'development';
+    this.port = PORT ? parseInt(PORT, 10) : 3000;
+
+    this.initializeMiddlewares();
+    this.initializeRoutes(routes);
+    this.initializeErrorHandling();
+  }
+
+  public listen() {
+    this.app.listen(this.port, () => {
+      console.log(\`=================================\`);
+      console.log(\`======= ENV: \${this.env} =======\`);
+      console.log(\`🚀 App listening on the port \${this.port}\`);
+      console.log(\`=================================\`);
+    });
+  }
+
+  public getServer() {
+    return this.app;
+  }
+
+  private initializeMiddlewares() {
+    this.app.use(morganMiddleware);
+    this.app.use(cors({ origin: process.env.ORIGIN, credentials: CREDENTIALS }));
+    this.app.use(hpp());
+    this.app.use(helmet());
+    this.app.use(compression());
+    this.app.use(json());
+    this.app.use(cookieParser());
+  }
+
+  private initializeRoutes(routes: Routes[]) {
+    routes.forEach(route => {
+      this.app.use('/api', route.router);
+    });
+  }
+}
+
+private initializeErrorHandling() {
+    console.log('Initialize Error Handler');
+  }
+`;
+const serversTemplate = () => `
+import { App } from '@/app';
+import * as process from 'process';
+import * as path from 'path';
+import fs from 'fs';
+
+async function checkDatabaseConnection() {
+  console.log('Checking DB Connection');
+  try {
+    await prisma.$connect();
+  } catch (e) {
+    console.error('Database Connection Failed', e);
+    process.exit(1);
+  }
+}
+
+(async () => {
+  await checkDatabaseConnection();
+
+  const app = new App([
+  //TODO default root
+  ]);
+
+  app.listen();
+})();
+
+`;
 // Mencetak struktur direktori
 const printDirectoryStructure = (dir_1, ...args_1) => __awaiter(void 0, [dir_1, ...args_1], void 0, function* (dir, prefix = '') {
     try {
@@ -256,7 +387,7 @@ const printDirectoryStructure = (dir_1, ...args_1) => __awaiter(void 0, [dir_1, 
 // Menginstal package jika diperlukan
 const installPackageIfNeeded = (packageName) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const packageJsonPath = path_1.default.join(__dirname, '..', '..', 'package.json');
+        const packageJsonPath = path_1.default.join(process.cwd(), 'package.json');
         const packageJson = yield fs_extra_1.default.readJson(packageJsonPath);
         const dependencies = Object.assign(Object.assign({}, packageJson.dependencies), packageJson.devDependencies);
         if (dependencies[packageName]) {
@@ -275,7 +406,7 @@ const installPackageIfNeeded = (packageName) => __awaiter(void 0, void 0, void 0
 // Memperbarui file .env
 const updateEnvFile = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const envFilePath = path_1.default.join(__dirname, '..', '..', '.env');
+        const envFilePath = path_1.default.join(process.cwd(), '.env');
         let envContent = '';
         if (yield fs_extra_1.default.pathExists(envFilePath)) {
             envContent = yield fs_extra_1.default.readFile(envFilePath, 'utf8');
@@ -312,6 +443,8 @@ const generateRoutes = () => __awaiter(void 0, void 0, void 0, function* () {
         const middlewaresDir = path_1.default.join(process.cwd(), 'src/middlewares');
         const interfacesDir = path_1.default.join(process.cwd(), 'src/interfaces');
         const configDir = path_1.default.join(process.cwd(), 'src/config');
+        const appDir = path_1.default.join(process.cwd(), 'src');
+        const serverDir = path_1.default.join(process.cwd(), 'src');
         const httpDir = path_1.default.join(process.cwd(), 'src/http');
         const exceptionsDir = path_1.default.join(process.cwd(), 'src/exceptions');
         yield fs_extra_1.default.ensureDir(routesDir);
@@ -340,6 +473,14 @@ const generateRoutes = () => __awaiter(void 0, void 0, void 0, function* () {
         `;
         yield writeFileAndLog(httpExceptionFilePath, httpExceptionContent);
         // Install packages if needed
+        yield installPackageIfNeeded('express');
+        yield installPackageIfNeeded('body-parser');
+        yield installPackageIfNeeded('morgan');
+        yield installPackageIfNeeded('cors');
+        yield installPackageIfNeeded('hpp');
+        yield installPackageIfNeeded('helmet');
+        yield installPackageIfNeeded('compression');
+        yield installPackageIfNeeded('cookie-parser');
         yield installPackageIfNeeded('dotenv');
         yield installPackageIfNeeded('class-transformer');
         yield installPackageIfNeeded('class-validator');
@@ -360,6 +501,10 @@ const generateRoutes = () => __awaiter(void 0, void 0, void 0, function* () {
         // Write the config file
         const configFilePath = path_1.default.join(configDir, 'index.ts');
         yield writeFileAndLog(configFilePath, configTemplate());
+        const appFilePath = path_1.default.join(appDir, 'app.ts');
+        yield writeFileAndLog(appFilePath, appTemplate());
+        const serverFilePath = path_1.default.join(serverDir, 'server.ts');
+        yield writeFileAndLog(serverFilePath, serversTemplate());
         // Process each model
         for (const modelName of modelNames) {
             if (/^[A-Za-z0-9_]+$/.test(modelName)) {

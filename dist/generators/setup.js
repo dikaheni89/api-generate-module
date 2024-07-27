@@ -9,6 +9,5 @@ const path_1 = __importDefault(require("path"));
 const folder = 'src';
 // Membuat folder jika tidak ada
 const folderPath = path_1.default.join(process.cwd(), folder);
-console.log(folderPath);
 fs_extra_1.default.ensureDirSync(folderPath);
-console.log(`Ensured: ${folder}`);
+console.log(`Ensured: ${folder} directory at ${folderPath}`);

@@ -3,9 +3,26 @@ import fs from 'fs-extra';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
+import * as process from "node:process";
+
+dotenv.config();
 
 const execPromise = promisify(exec);
-const prisma = new PrismaClient();
+
+const prismaSchemaPath = process.env.PRISMA_SCHEMA_PATH || './prisma/schema.prisma';
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+    throw new Error('DATABASE_URL is not defined in the environment variables.');
+}
+
+const prisma = new PrismaClient({
+    datasources: {
+        db: {
+            url: databaseUrl,
+        },
+    },
+});
 
 // Mengambil nama model dari PostgreSQL
 export const getModelNames = async (): Promise<string[]> => {
@@ -220,9 +237,105 @@ const generateHttpFile = async (modelName: string, fields: any) => {
     DELETE {{ baseURL }}/${modelName.toLowerCase()}/1
 `;
 
-    const httpFilePath = path.join(__dirname, '..', 'http', `${modelName.toLowerCase()}.http`);
+    const httpFilePath = path.join(process.cwd(), 'src/http', `${modelName.toLowerCase()}.http`);
     await writeFileAndLog(httpFilePath, httpContent);
 };
+
+const appTemplate = () => `
+import express, { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+import { json } from 'body-parser';
+import { ValidationMiddleware } from '@middlewares/validation.middleware';
+import { Routes } from '@interfaces/routes.interface';
+import { CREDENTIALS, NODE_ENV, PORT } from '@config';
+import { HttpException } from '@exceptions/HttpException';
+import { logger, stream } from '@utils/logger';
+import morgan from 'morgan';
+import cors from 'cors';
+import hpp from 'hpp';
+import helmet from 'helmet';
+import compression from 'compression';
+import cookieParser from 'cookie-parser';
+
+const prisma = new PrismaClient();
+
+class App {
+  public app: express.Application;
+  public env: string;
+  public port: number;
+
+  constructor(routes: Routes[]) {
+    this.app = express();
+    this.env = NODE_ENV || 'development';
+    this.port = PORT ? parseInt(PORT, 10) : 3000;
+
+    this.initializeMiddlewares();
+    this.initializeRoutes(routes);
+    this.initializeErrorHandling();
+  }
+
+  public listen() {
+    this.app.listen(this.port, () => {
+      console.log(\`=================================\`);
+      console.log(\`======= ENV: \${this.env} =======\`);
+      console.log(\`🚀 App listening on the port \${this.port}\`);
+      console.log(\`=================================\`);
+    });
+  }
+
+  public getServer() {
+    return this.app;
+  }
+
+  private initializeMiddlewares() {
+    this.app.use(morganMiddleware);
+    this.app.use(cors({ origin: process.env.ORIGIN, credentials: CREDENTIALS }));
+    this.app.use(hpp());
+    this.app.use(helmet());
+    this.app.use(compression());
+    this.app.use(json());
+    this.app.use(cookieParser());
+  }
+
+  private initializeRoutes(routes: Routes[]) {
+    routes.forEach(route => {
+      this.app.use('/api', route.router);
+    });
+  }
+}
+
+private initializeErrorHandling() {
+    console.log('Initialize Error Handler');
+  }
+`;
+
+const serversTemplate = () => `
+import { App } from '@/app';
+import * as process from 'process';
+import * as path from 'path';
+import fs from 'fs';
+
+async function checkDatabaseConnection() {
+  console.log('Checking DB Connection');
+  try {
+    await prisma.$connect();
+  } catch (e) {
+    console.error('Database Connection Failed', e);
+    process.exit(1);
+  }
+}
+
+(async () => {
+  await checkDatabaseConnection();
+
+  const app = new App([
+  //TODO default root
+  ]);
+
+  app.listen();
+})();
+
+`
 
 // Mencetak struktur direktori
 const printDirectoryStructure = async (dir: string, prefix: string = '') => {
@@ -246,7 +359,7 @@ const printDirectoryStructure = async (dir: string, prefix: string = '') => {
 // Menginstal package jika diperlukan
 const installPackageIfNeeded = async (packageName: string) => {
     try {
-        const packageJsonPath = path.join(__dirname, '..', '..', 'package.json');
+        const packageJsonPath = path.join(process.cwd(), 'package.json');
         const packageJson = await fs.readJson(packageJsonPath);
         const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
         if (dependencies[packageName]) {
@@ -266,7 +379,7 @@ const installPackageIfNeeded = async (packageName: string) => {
 // Memperbarui file .env
 const updateEnvFile = async () => {
     try {
-        const envFilePath = path.join(__dirname, '..', '..', '.env');
+        const envFilePath = path.join(process.cwd(), '.env');
         let envContent = '';
 
         if (await fs.pathExists(envFilePath)) {
@@ -308,6 +421,8 @@ export const generateRoutes = async () => {
         const middlewaresDir = path.join(process.cwd(), 'src/middlewares');
         const interfacesDir = path.join(process.cwd(), 'src/interfaces');
         const configDir = path.join(process.cwd(), 'src/config');
+        const appDir = path.join(process.cwd(), 'src');
+        const serverDir = path.join(process.cwd(), 'src');
         const httpDir = path.join(process.cwd(), 'src/http');
         const exceptionsDir = path.join(process.cwd(), 'src/exceptions');
 
@@ -339,6 +454,14 @@ export const generateRoutes = async () => {
         await writeFileAndLog(httpExceptionFilePath, httpExceptionContent);
 
         // Install packages if needed
+        await installPackageIfNeeded('express');
+        await installPackageIfNeeded('body-parser');
+        await installPackageIfNeeded('morgan');
+        await installPackageIfNeeded('cors');
+        await installPackageIfNeeded('hpp');
+        await installPackageIfNeeded('helmet');
+        await installPackageIfNeeded('compression');
+        await installPackageIfNeeded('cookie-parser')
         await installPackageIfNeeded('dotenv');
         await installPackageIfNeeded('class-transformer');
         await installPackageIfNeeded('class-validator');
@@ -362,6 +485,12 @@ export const generateRoutes = async () => {
         // Write the config file
         const configFilePath = path.join(configDir, 'index.ts');
         await writeFileAndLog(configFilePath, configTemplate());
+
+        const appFilePath = path.join(appDir, 'app.ts');
+        await writeFileAndLog(appFilePath, appTemplate());
+
+        const serverFilePath = path.join(serverDir, 'server.ts');
+        await writeFileAndLog(serverFilePath, serversTemplate());
 
         // Process each model
         for (const modelName of modelNames) {

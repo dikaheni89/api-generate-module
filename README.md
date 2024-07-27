@@ -11,11 +11,12 @@ generator for creating RESTful NodeJS APIs, using ES6, Prisma. The fastest way t
 - Make install Prisma and @prisma/client: `npm install prisma` and `npm install @prisma/client --save-dev`
 - If the database already exists, please do a DB pull using Prisma so that the schema can be updated command: `npx prisma init` 
 - setting file `.env` envirovment change configuration `DATABASE_URL="postgresql://username:password@localhost:port/my-db?schema=public"`
-- continue `npx prisma db pull`
+- continue `npx prisma db pull` or `npx prisma generate` database 
 - continue install several dependencies `npm install ts-node --save-dev`, `npm install @types/node --save-dev`
 - final install `npm install api-generator-module`
-- several configuration `npx api-generator-module setup` from setup directory and configuration `npx api-generator-module generate` from setup generate file Restfull Api based on schema ORM prisma 
-- several configuration tsconfig.json `npx api-generator-module update-tsconfig` so that you update the tsconfig settings
+- several configuration `npx api-generator-module setup` from 
+- setup directory and configuration `npx api-generate-module generateApi` from setup generate file Restfull Api based on schema ORM prisma 
+- several configuration tsconfig.json `npx api-generator-module generateTsconfig` so that you update the tsconfig settings
 
 ## Running the generated project
 
