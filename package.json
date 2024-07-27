@@ -1,14 +1,10 @@
 {
   "name": "api-generate-module",
-  "version": "1.1.1",
+  "version": "1.2.3",
   "description": "library to produce restfull api based on database schema using Prisma ORM",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": {
-    "api-generate-module": "dist/bin/cli.js"
-  },
   "scripts": {
-    "postinstall": "node dist/bin/cli.js setup",
     "build": "tsc",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "start": "ts-node src/index.ts",
@@ -17,9 +13,16 @@
     "setup": "ts-node src/setup.ts",
     "generate-and-update": "npm run generate-api && npm run update-tsconfig"
   },
+  "bin": {
+    "api-generate-module": "dist/index.js"
+  },
   "keywords": ["Api Generatore Template", "Generator Module REst Api"],
   "author": "Handika",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:dikaheni89/api-generate-module.git"
+  },
   "dependencies": {
     "@prisma/client": "^5.17.0",
     "class-transformer": "^0.5.1",

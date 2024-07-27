@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 
 const updateTsconfig = async () => {
-    const tsconfigPath = path.join(__dirname, '..', '..', 'tsconfig.json');
+    const tsconfigPath = path.join(process.cwd(), 'tsconfig.json');
 
     try {
         const tsconfig = await fs.readJson(tsconfigPath);

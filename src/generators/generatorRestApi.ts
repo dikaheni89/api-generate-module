@@ -302,14 +302,14 @@ export const generateRoutes = async () => {
     try {
         const modelNames = await getModelNames();
 
-        const routesDir = path.join(__dirname, '..', 'routes');
-        const dtosDir = path.join(__dirname, '..', 'dtos');
-        const controllersDir = path.join(__dirname, '..', 'controllers');
-        const middlewaresDir = path.join(__dirname, '..', 'middlewares');
-        const interfacesDir = path.join(__dirname, '..', 'interfaces');
-        const configDir = path.join(__dirname, '..', 'config');
-        const httpDir = path.join(__dirname, '..', 'http');
-        const exceptionsDir = path.join(__dirname, '..', 'exceptions');
+        const routesDir = path.join(process.cwd(), 'src/routes');
+        const dtosDir = path.join(process.cwd(), 'src/dtos');
+        const controllersDir = path.join(process.cwd(), 'src/controllers');
+        const middlewaresDir = path.join(process.cwd(), 'src/middlewares');
+        const interfacesDir = path.join(process.cwd(), 'src/interfaces');
+        const configDir = path.join(process.cwd(), 'src/config');
+        const httpDir = path.join(process.cwd(), 'src/http');
+        const exceptionsDir = path.join(process.cwd(), 'src/exceptions');
 
         await fs.ensureDir(routesDir);
         await fs.ensureDir(dtosDir);
@@ -394,7 +394,7 @@ export const generateRoutes = async () => {
 
         console.log('File generation complete.');
         console.log('Directory structure:');
-        await printDirectoryStructure(path.join(__dirname, '..'));
+        await printDirectoryStructure(path.join(process.cwd()));
     } catch (error) {
         console.error('Error generating routes:', error);
     } finally {
