@@ -8,7 +8,7 @@ const execPromise = promisify(exec);
 const prisma = new PrismaClient();
 
 // Mengambil nama model dari PostgreSQL
-const getModelNames = async (): Promise<string[]> => {
+export const getModelNames = async (): Promise<string[]> => {
     try {
         const tables = await prisma.$queryRaw<{ table_name: string }[]>`
       SELECT table_name 
@@ -298,7 +298,7 @@ const updateEnvFile = async () => {
 };
 
 // Fungsi utama untuk menghasilkan route
-const generateRoutes = async () => {
+export const generateRoutes = async () => {
     try {
         const modelNames = await getModelNames();
 

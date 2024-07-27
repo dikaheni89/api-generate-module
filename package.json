@@ -1,6 +1,6 @@
 {
   "name": "api-generate-module",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "library to produce restfull api based on database schema using Prisma ORM",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,13 +8,23 @@
     "api-generate-module": "dist/bin/cli.js"
   },
   "scripts": {
+    "postinstall": "node dist/bin/cli.js setup",
     "build": "tsc",
-    "postinstall": "node dist/setup.js"
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "start": "ts-node src/index.ts",
+    "generate-api": "ts-node src/generators/generatorRestApi.ts",
+    "update-tsconfig": "ts-node src/generators/updateTsconfig.ts",
+    "setup": "ts-node src/setup.ts",
+    "generate-and-update": "npm run generate-api && npm run update-tsconfig"
   },
-  "keywords": [],
+  "keywords": ["Api Generatore Template", "Generator Module REst Api"],
   "author": "Handika",
   "license": "MIT",
   "dependencies": {
+    "@prisma/client": "^5.17.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "fs-extra": "^11.2.0"
   },
@@ -22,6 +32,7 @@
     "@types/express": "^4.17.21",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.14.12",
+    "prisma": "^5.17.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.5.4"
