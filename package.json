@@ -1,10 +1,11 @@
 {
   "name": "api-generate-module",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "library to produce restfull api based on database schema using Prisma ORM",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "postinstall": "node scripts/setup.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "ts-node src/index.ts",
